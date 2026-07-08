@@ -241,6 +241,15 @@ func (h *Handler) ConnectionGetColumns(connID core.ConnectionID, opts *core.Tabl
 	return columns, nil
 }
 
+func (h *Handler) ConnectionInSession(connID core.ConnectionID) (bool, error) {
+	c, ok := h.lookupConnection[connID]
+	if !ok {
+		return false, fmt.Errorf("unknown connection with id: %q", connID)
+	}
+
+	return c.InSession(), nil
+}
+
 func (h *Handler) ConnectionListDatabases(connID core.ConnectionID) (current string, available []string, err error) {
 	c, ok := h.lookupConnection[connID]
 	if !ok {

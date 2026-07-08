@@ -105,7 +105,23 @@ function DrawerUI:new(handler, editor, result, opts)
     o:on_current_note_changed(data)
   end)
 
+  -- refresh when a call finishes so session indicators (e.g. open
+  -- transactions) stay up to date
+  handler:register_event_listener("call_state_changed", function(data)
+    o:on_call_state_changed(data)
+  end)
+
   return o
+end
+
+-- event listener for call state change: refresh on terminal states only
+---@private
+---@param data { call: CallDetails }
+function DrawerUI:on_call_state_changed(data)
+  local state = data.call and data.call.state
+  if state == "archived" or state == "executing_failed" or state == "retrieving_failed" or state == "canceled" then
+    self:refresh()
+  end
 end
 
 -- event listener for current connection change

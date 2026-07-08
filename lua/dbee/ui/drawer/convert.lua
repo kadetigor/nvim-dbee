@@ -229,9 +229,15 @@ local function handler_real_nodes(handler, result)
         end
       end
 
+      -- warn about an open interactive transaction (holds locks until closed)
+      local display_name = conn.name
+      if handler:connection_in_session(conn.id) then
+        display_name = display_name .. "  ⚠ TX OPEN"
+      end
+
       local node = NuiTree.Node {
         id = conn.id,
-        name = conn.name,
+        name = display_name,
         type = "connection",
         -- set connection as active manually
         action_1 = function(cb)

@@ -250,6 +250,16 @@ function Handler:connection_get_params(id)
 end
 
 ---@param id connection_id
+---@return boolean # true if an interactive transaction is open on the connection
+function Handler:connection_in_session(id)
+  local ok, ret = pcall(vim.fn.DbeeConnectionInSession, id)
+  if not ok then
+    return false
+  end
+  return ret == true or ret == 1
+end
+
+---@param id connection_id
 ---@return string current_db
 ---@return string[] available_dbs
 function Handler:connection_list_databases(id)

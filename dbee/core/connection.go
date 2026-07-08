@@ -41,6 +41,12 @@ type (
 		SelectDatabase(string) error
 		ListDatabases() (current string, available []string, err error)
 	}
+
+	// SessionReporter is an optional interface for drivers that support
+	// interactive transactions and can report an open session.
+	SessionReporter interface {
+		InSession() bool
+	}
 )
 
 type ConnectionID string
@@ -110,6 +116,17 @@ func (c *Connection) Execute(query string, onEvent func(CallState, *Call)) *Call
 	}
 
 	return newCallFromExecutor(exec, query, onEvent)
+}
+
+// InSession reports whether the driver holds an open interactive session
+// (e.g. a transaction opened with BEGIN that wasn't committed or rolled back).
+// Drivers without session support always report false.
+func (c *Connection) InSession() bool {
+	reporter, ok := c.driver.(SessionReporter)
+	if !ok {
+		return false
+	}
+	return reporter.InSession()
 }
 
 // SelectDatabase tries to switch to a given database with the used client.

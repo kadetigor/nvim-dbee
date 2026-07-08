@@ -149,6 +149,15 @@ func mountEndpoints(p *plugin.Plugin, h *handler.Handler) {
 	})
 
 	p.RegisterEndpoint(
+		"DbeeConnectionInSession",
+		func(args *struct {
+			ID core.ConnectionID `msgpack:",array"`
+		},
+		) (any, error) {
+			return h.ConnectionInSession(args.ID)
+		})
+
+	p.RegisterEndpoint(
 		"DbeeConnectionListDatabases",
 		func(args *struct {
 			ID core.ConnectionID `msgpack:",array"`

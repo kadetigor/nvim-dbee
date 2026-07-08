@@ -17,6 +17,7 @@ import (
 var (
 	_ core.Driver           = (*postgresDriver)(nil)
 	_ core.DatabaseSwitcher = (*postgresDriver)(nil)
+	_ core.SessionReporter  = (*postgresDriver)(nil)
 )
 
 type postgresDriver struct {
@@ -74,6 +75,11 @@ func lastStatementEndsTransaction(lowerQuery string) bool {
 		}
 	}
 	return false
+}
+
+// InSession reports whether an interactive transaction is currently open.
+func (c *postgresDriver) InSession() bool {
+	return c.c.InSession()
 }
 
 func (c *postgresDriver) Columns(opts *core.TableOptions) ([]*core.Column, error) {
