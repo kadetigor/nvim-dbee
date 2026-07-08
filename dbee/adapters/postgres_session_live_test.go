@@ -59,8 +59,8 @@ func TestPostgresInteractiveTransaction(t *testing.T) {
 	defer run(t, main, ctx, "DROP TABLE IF EXISTS dbee_session_test")
 
 	// --- interactive transaction: separate calls, must share one session ---
-	run(t, main, ctx, "BEGIN")
-	run(t, main, ctx, "INSERT INTO dbee_session_test VALUES (1)")
+	run(t, main, ctx, "BEGIN;")
+	run(t, main, ctx, "INSERT INTO dbee_session_test VALUES (1);")
 
 	// uncommitted row: invisible to other connections
 	rows := run(t, observer, ctx, "SELECT * FROM dbee_session_test")
@@ -74,7 +74,7 @@ func TestPostgresInteractiveTransaction(t *testing.T) {
 		t.Fatalf("row not visible inside own transaction: queries not on pinned connection (got %d rows)", len(rows))
 	}
 
-	run(t, main, ctx, "COMMIT")
+	run(t, main, ctx, "COMMIT;")
 
 	rows = run(t, observer, ctx, "SELECT * FROM dbee_session_test")
 	if len(rows) != 1 {
@@ -82,9 +82,9 @@ func TestPostgresInteractiveTransaction(t *testing.T) {
 	}
 
 	// --- rollback path ---
-	run(t, main, ctx, "BEGIN")
-	run(t, main, ctx, "INSERT INTO dbee_session_test VALUES (2)")
-	run(t, main, ctx, "ROLLBACK")
+	run(t, main, ctx, "BEGIN;")
+	run(t, main, ctx, "INSERT INTO dbee_session_test VALUES (2);")
+	run(t, main, ctx, "ROLLBACK;")
 
 	rows = run(t, main, ctx, "SELECT * FROM dbee_session_test")
 	if len(rows) != 1 {
@@ -92,12 +92,12 @@ func TestPostgresInteractiveTransaction(t *testing.T) {
 	}
 
 	// --- savepoint: ROLLBACK TO must keep the session open ---
-	run(t, main, ctx, "BEGIN")
-	run(t, main, ctx, "SAVEPOINT sp1")
-	run(t, main, ctx, "INSERT INTO dbee_session_test VALUES (3)")
-	run(t, main, ctx, "ROLLBACK TO SAVEPOINT sp1")
-	run(t, main, ctx, "INSERT INTO dbee_session_test VALUES (4)")
-	run(t, main, ctx, "COMMIT")
+	run(t, main, ctx, "BEGIN;")
+	run(t, main, ctx, "SAVEPOINT sp1;")
+	run(t, main, ctx, "INSERT INTO dbee_session_test VALUES (3);")
+	run(t, main, ctx, "ROLLBACK TO SAVEPOINT sp1;")
+	run(t, main, ctx, "INSERT INTO dbee_session_test VALUES (4);")
+	run(t, main, ctx, "COMMIT;")
 
 	rows = run(t, main, ctx, "SELECT id FROM dbee_session_test ORDER BY id")
 	if len(rows) != 2 {

@@ -30,7 +30,8 @@ func (c *postgresDriver) Query(ctx context.Context, query string) (core.ResultSt
 	fields := strings.Fields(lower)
 	action := ""
 	if len(fields) > 0 {
-		action = fields[0]
+		// trim statement separator so "begin;" matches too
+		action = strings.Trim(fields[0], ";")
 	}
 
 	// Interactive transactions: BEGIN pins a dedicated session so that
