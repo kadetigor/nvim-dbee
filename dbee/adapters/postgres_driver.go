@@ -26,7 +26,7 @@ type postgresDriver struct {
 }
 
 func (c *postgresDriver) Query(ctx context.Context, query string) (core.ResultStream, error) {
-	lower := strings.ToLower(query)
+	lower := stripLeadingComments(strings.ToLower(query))
 	fields := strings.Fields(lower)
 	action := ""
 	if len(fields) > 0 {
@@ -56,13 +56,38 @@ func (c *postgresDriver) Query(ctx context.Context, query string) (core.ResultSt
 	return c.c.QueryUntilNotEmpty(ctx, query)
 }
 
+// stripLeadingComments removes leading whitespace, line comments (--) and
+// block comments (/* */) so transaction keyword detection sees the first
+// real statement token.
+func stripLeadingComments(q string) string {
+	for {
+		q = strings.TrimSpace(q)
+		switch {
+		case strings.HasPrefix(q, "--"):
+			nl := strings.IndexByte(q, '\n')
+			if nl < 0 {
+				return ""
+			}
+			q = q[nl+1:]
+		case strings.HasPrefix(q, "/*"):
+			end := strings.Index(q, "*/")
+			if end < 0 {
+				return ""
+			}
+			q = q[end+2:]
+		default:
+			return q
+		}
+	}
+}
+
 // lastStatementEndsTransaction reports whether the final statement of a
 // (possibly multi-statement) query commits or rolls back the transaction.
 // "ROLLBACK TO SAVEPOINT" stays inside the transaction and doesn't count.
 func lastStatementEndsTransaction(lowerQuery string) bool {
 	statements := strings.Split(lowerQuery, ";")
 	for i := len(statements) - 1; i >= 0; i-- {
-		fields := strings.Fields(statements[i])
+		fields := strings.Fields(stripLeadingComments(statements[i]))
 		if len(fields) == 0 {
 			continue
 		}
