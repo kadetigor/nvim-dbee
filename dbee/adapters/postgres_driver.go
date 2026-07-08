@@ -25,14 +25,55 @@ type postgresDriver struct {
 }
 
 func (c *postgresDriver) Query(ctx context.Context, query string) (core.ResultStream, error) {
-	action := strings.ToLower(strings.Split(query, " ")[0])
-	hasReturnValues := strings.Contains(strings.ToLower(query), " returning ")
+	lower := strings.ToLower(query)
+	fields := strings.Fields(lower)
+	action := ""
+	if len(fields) > 0 {
+		action = fields[0]
+	}
+
+	// Interactive transactions: BEGIN pins a dedicated session so that
+	// consecutive calls run on the same connection, COMMIT/ROLLBACK release it.
+	// Without this each call may get a different pooled connection and an open
+	// transaction silently doesn't apply to subsequent queries.
+	if action == "begin" || action == "start" {
+		if err := c.c.StartSession(ctx); err != nil {
+			return nil, err
+		}
+	}
+	if lastStatementEndsTransaction(lower) {
+		defer c.c.EndSession()
+	}
+
+	hasReturnValues := strings.Contains(lower, " returning ")
 
 	if (action == "update" || action == "delete" || action == "insert") && !hasReturnValues {
 		return c.c.Exec(ctx, query)
 	}
 
 	return c.c.QueryUntilNotEmpty(ctx, query)
+}
+
+// lastStatementEndsTransaction reports whether the final statement of a
+// (possibly multi-statement) query commits or rolls back the transaction.
+// "ROLLBACK TO SAVEPOINT" stays inside the transaction and doesn't count.
+func lastStatementEndsTransaction(lowerQuery string) bool {
+	statements := strings.Split(lowerQuery, ";")
+	for i := len(statements) - 1; i >= 0; i-- {
+		fields := strings.Fields(statements[i])
+		if len(fields) == 0 {
+			continue
+		}
+		switch fields[0] {
+		case "commit", "end", "abort":
+			return true
+		case "rollback":
+			return len(fields) < 2 || fields[1] != "to"
+		default:
+			return false
+		}
+	}
+	return false
 }
 
 func (c *postgresDriver) Columns(opts *core.TableOptions) ([]*core.Column, error) {
